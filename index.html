@@ -8,15 +8,8 @@
 </head>
 <body>
     <div class="container" id="main">
-        <h1>Matrix 👓</h1>
+        <h1>Plex 👓</h1>
         
-        <div class="config">
-            <input type="text" id="serverUrl" placeholder="server address" value="">
-            <input type="text" id="plexToken" placeholder="X-Plex-Token" value="">
-            <button onclick="saveConfig()">Save</button>
-        </div>
-
-        <div id="continueWatching"></div>
         <div id="recentlyAdded"></div>
         <div id="libraries"></div>
         <div id="browse"></div>
@@ -25,10 +18,6 @@
             <video id="videoPlayer" autoplay playsinline></video>
             <div class="video-overlay">
                 <button onclick="exitPlayer()" class="back-btn">← Back</button>
-                <button onclick="toggleSubtitles()" class="sub-btn">💬 Subs</button>
-            </div>
-            <div id="subtitleMenu" class="hidden subtitle-menu">
-                <!-- Populated dynamically -->
             </div>
         </div>
     </div>
