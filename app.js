@@ -1,5 +1,5 @@
 // ================== YOUR PLEX SETTINGS ==================
-const DEFAULT_SERVER_URL = "https:// 23.119.50.243:32400";
+const DEFAULT_SERVER_URL = "https://23.119.50.243:32400";
 const DEFAULT_PLEX_TOKEN = "W2SAvvUNygsyESTDtgY_";
 // =======================================================
 
@@ -41,7 +41,6 @@ async function loadLibraries() {
         const xml = await apiCall('/library/sections');
         const doc = new DOMParser().parseFromString(xml, 'text/xml');
         const dirs = doc.querySelectorAll('Directory');
-        
         dirs.forEach(dir => {
             const el = document.createElement('div');
             el.className = 'focusable';
@@ -55,13 +54,13 @@ async function loadLibraries() {
 }
 
 async function browseSection(key) {
-    const browseDiv = document.getElementById('browse');
-    browseDiv.innerHTML = '<h2>Loading...</h2><button onclick="loadHome()">← Back to Home</button>';
+    const div = document.getElementById('browse');
+    div.innerHTML = '<h2>Loading content...</h2><button onclick="loadHome()">← Back to Home</button>';
     try {
         const xml = await apiCall(`/library/sections/${key}/all`);
-        renderItems(xml, browseDiv);
+        renderItems(xml, div);
     } catch(e) {
-        browseDiv.innerHTML += '<p>Failed to load content</p>';
+        div.innerHTML += '<p>Failed to load</p>';
     }
 }
 
@@ -75,13 +74,9 @@ function renderItems(xml, container) {
         const title = item.getAttribute('title') || 'Untitled';
         const thumb = item.getAttribute('thumb') || '';
         const key = item.getAttribute('key');
-        
         const div = document.createElement('div');
         div.className = 'item focusable';
-        div.innerHTML = `
-            <img src="${getThumbUrl(thumb)}" onerror="this.style.display='none'">
-            <div class="title">${title}</div>
-        `;
+        div.innerHTML = `<img src="${getThumbUrl(thumb)}" onerror="this.style.display='none'"><div class="title">${title}</div>`;
         div.onclick = () => playMedia(key);
         grid.appendChild(div);
     });
@@ -93,18 +88,15 @@ async function playMedia(key) {
     video.src = `${serverUrl}/library/metadata/${key}/?X-Plex-Token=${token}`;
     document.getElementById('main').classList.add('hidden');
     document.getElementById('player').classList.remove('hidden');
-    video.play().catch(() => alert("Playback started"));
+    video.play();
 }
 
 function exitPlayer() {
     const video = document.getElementById('videoPlayer');
-    video.pause(); 
-    video.src = '';
+    video.pause(); video.src = '';
     document.getElementById('player').classList.add('hidden');
     document.getElementById('main').classList.remove('hidden');
 }
 
-// Auto start
-window.onload = () => {
-    loadHome();
-};
+// Start the app
+window.onload = loadHome;
