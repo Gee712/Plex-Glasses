@@ -1,0 +1,17 @@
+/* ... previous styles remain the same ... */
+
+.subtitle-menu {
+    position: absolute;
+    bottom: 80px;
+    left: 20px;
+    background: rgba(0,0,0,0.85);
+    padding: 10px;
+    border-radius: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.subtitle-menu div {
+    padding: 8px;
+    cursor: pointer;
+}
+.subtitle-menu div:hover, .subtitle-menu div:focus { background: #1a73e8; }
