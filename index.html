@@ -11,8 +11,8 @@
         <h1>Plex 👓</h1>
         
         <div class="config">
-            <input type="text" id="serverUrl" placeholder="https://23.119.50.243:32400" value="">
-            <input type="text" id="plexToken" placeholder="X-Plex-Token" value="W2SAvvUNygsyESTDtgY_">
+            <input type="text" id="serverUrl" placeholder="server address" value="">
+            <input type="text" id="plexToken" placeholder="X-Plex-Token" value="">
             <button onclick="saveConfig()">Save</button>
         </div>
 
@@ -21,9 +21,9 @@
             <button onclick="search()">🔎</button>
         </div>
 
-        <div id="continueWatching"></div>
         <div id="libraries"></div>
         <div id="browse"></div>
+        <div id="continueWatching"></div>
 
         <div id="player" class="hidden">
             <video id="videoPlayer" autoplay playsinline></video>
