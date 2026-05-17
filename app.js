@@ -127,13 +127,19 @@ async function search() {
 async function loadSeasons(showKey) {
     const browseDiv = document.getElementById('browse');
     browseDiv.innerHTML = '<h2>Seasons</h2><button onclick="loadHome()">← Back</button>';
-    try { const xml = await apiCall(`/library/metadata/${showKey}/children`); renderItems(xml, browseDiv); } catch(e) {}
+    try { 
+        const xml = await apiCall(`/library/metadata/${showKey}/children`); 
+        renderItems(xml, browseDiv); 
+    } catch(e) {}
 }
 
 async function loadEpisodes(seasonKey) {
     const browseDiv = document.getElementById('browse');
     browseDiv.innerHTML = '<h2>Episodes</h2><button onclick="loadHome()">← Back</button>';
-    try { const xml = await apiCall(`/library/metadata/${seasonKey}/children`); renderItems(xml, browseDiv); } catch(e) {}
+    try { 
+        const xml = await apiCall(`/library/metadata/${seasonKey}/children`); 
+        renderItems(xml, browseDiv); 
+    } catch(e) {}
 }
 
 async function playMedia(key, offset = 0) {
@@ -149,12 +155,15 @@ async function playMedia(key, offset = 0) {
 
 function exitPlayer() {
     const video = document.getElementById('videoPlayer');
-    video.pause(); video.src = '';
+    video.pause(); 
+    video.src = '';
     document.getElementById('player').classList.add('hidden');
     document.getElementById('main').classList.remove('hidden');
 }
 
-async function toggleSubtitles() { /* simplified for now */ alert('Subtitles coming soon'); }
+async function toggleSubtitles() { 
+    alert('Subtitles coming soon'); 
+}
 
 // Load saved config
 const saved = localStorage.getItem('plexConfig');
