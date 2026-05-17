@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=600, initial-scale=1.0">
+    <title>Plex on Glasses</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container" id="main">
+        <h1>Plex 👓</h1>
+        
+        <div class="config">
+            <input type="text" id="serverUrl" placeholder="https://your-plex.plex.direct:32400" value="">
+            <input type="text" id="plexToken" placeholder="X-Plex-Token" value="">
+            <button onclick="saveConfig()">Save</button>
+        </div>
+
+        <div class="search">
+            <input type="text" id="searchInput" placeholder="Search..." onkeyup="if(event.key==='Enter') search()">
+            <button onclick="search()">🔎</button>
+        </div>
+
+        <div id="continueWatching"></div>
+        <div id="libraries"></div>
+        <div id="browse"></div>
+
+        <div id="player" class="hidden">
+            <video id="videoPlayer" autoplay playsinline></video>
+            <div class="video-overlay">
+                <button onclick="exitPlayer()" class="back-btn">← Back</button>
+                <button onclick="toggleSubtitles()" class="sub-btn">💬 Subs</button>
+            </div>
+            <div id="subtitleMenu" class="hidden subtitle-menu">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
