@@ -1,6 +1,6 @@
 // ================== YOUR PLEX SETTINGS ==================
-const DEFAULT_SERVER_URL = "https://23.119.50.243:32400";
-const DEFAULT_PLEX_TOKEN = "W2SAvvUNygsyESTDtgY_";
+const DEFAULT_SERVER_URL = "http://192.168.1.66:32400";
+const DEFAULT_PLEX_TOKEN = "W2SAvvUNyW2SAvvUNygsyESTDtgY_gsyESTDtgY_";
 // =======================================================
 
 let serverUrl = DEFAULT_SERVER_URL;
@@ -19,13 +19,11 @@ function saveConfig() {
 async function apiCall(endpoint) {
     let base = `${serverUrl}${endpoint}${endpoint.includes('?') ? '&' : '?'}X-Plex-Token=${token}`;
     
-    // Try direct first
     try {
         const res = await fetch(base);
         if (res.ok) return res.text();
     } catch(e) {}
 
-    // Try public proxy as fallback
     try {
         const proxyUrl = `https://api.allorigins.win/get?url=` + encodeURIComponent(base);
         const res = await fetch(proxyUrl);
@@ -35,15 +33,13 @@ async function apiCall(endpoint) {
         }
     } catch(e) {}
 
-    console.error('All connection attempts failed');
-    return '<p>Connection failed. Check your Plex server.</p>';
+    return '<p>Connection failed</p>';
 }
 
 function getThumbUrl(thumb) {
     return thumb ? `${serverUrl}${thumb}?X-Plex-Token=${token}` : '';
 }
 
-// ================== CORE FUNCTIONS ==================
 async function loadHome() {
     await Promise.allSettled([loadContinueWatching(), loadRecentlyAdded(), loadLibraries()]);
 }
@@ -56,7 +52,7 @@ async function loadContinueWatching() {
         try {
             const xml = await apiCall(ep);
             if (xml.includes('<Video') || xml.includes('<Directory')) {
-                renderItems(xml, div, true);
+                renderItems(xml, div);
                 return;
             }
         } catch(e) {}
@@ -82,10 +78,6 @@ async function loadLibraries() {
         const xml = await apiCall('/library/sections');
         const doc = new DOMParser().parseFromString(xml, 'text/xml');
         const dirs = doc.querySelectorAll('Directory');
-        if (dirs.length === 0) {
-            div.innerHTML += '<p>No libraries found.</p>';
-            return;
-        }
         dirs.forEach(dir => {
             const el = document.createElement('div');
             el.className = 'focusable';
@@ -94,7 +86,7 @@ async function loadLibraries() {
             div.appendChild(el);
         });
     } catch(e) {
-        div.innerHTML += `<p>Error loading libraries.<br>${e.message}</p>`;
+        div.innerHTML += `<p>Error loading libraries</p>`;
     }
 }
 
@@ -113,8 +105,8 @@ function renderItems(xml, container) {
     const grid = document.createElement('div');
     grid.className = 'grid';
     items.forEach(item => {
-        const title = item.getAttribute('title') || item.getAttribute('grandparentTitle') || 'Untitled';
-        const thumb = item.getAttribute('thumb') || item.getAttribute('grandparentThumb') || '';
+        const title = item.getAttribute('title') || 'Untitled';
+        const thumb = item.getAttribute('thumb') || '';
         const key = item.getAttribute('key');
         const div = document.createElement('div');
         div.className = 'item focusable';
@@ -138,22 +130,20 @@ async function search() {
 
 async function playMedia(key) {
     const video = document.getElementById('videoPlayer');
-    let url = `${serverUrl}/library/metadata/${key}/?X-Plex-Token=${token}`;
-    video.src = url;
+    video.src = `${serverUrl}/library/metadata/${key}/?X-Plex-Token=${token}`;
     document.getElementById('main').classList.add('hidden');
     document.getElementById('player').classList.remove('hidden');
-    video.play().catch(err => console.error(err));
+    video.play();
 }
 
 function exitPlayer() {
     const video = document.getElementById('videoPlayer');
-    video.pause();
-    video.src = '';
+    video.pause(); video.src = '';
     document.getElementById('player').classList.add('hidden');
     document.getElementById('main').classList.remove('hidden');
 }
 
-// Auto load when page opens
+// Auto-load on page open
 window.onload = () => {
     document.getElementById('serverUrl').value = serverUrl;
     document.getElementById('plexToken').value = token;
