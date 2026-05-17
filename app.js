@@ -86,31 +86,19 @@ function renderItems(xml, container) {
 async function playMedia(key) {
     const video = document.getElementById('videoPlayer');
     
-    // Better streaming URL for Plex (forces direct play when possible)
+    // Fixed + better Plex direct play URL
     let streamUrl = `${serverUrl}/library/metadata/${key}/file?X-Plex-Token=${token}`;
     
-    // Alternative with basic transcode (better compatibility)
-    // let streamUrl = `${serverUrl}/video/:/transcode/universal/start.m3u8?X-Plex-Token=${token}&ratingKey=${key}&path=%2Flibrary%2Fmetadata%2F${key}`;
-    
-    console.log("Playing:", streamUrl);
+    console.log("Attempting to play:", streamUrl);
     
     video.src = streamUrl;
     document.getElementById('main').classList.add('hidden');
     document.getElementById('player').classList.remove('hidden');
     
-    try {
-        await video.play();
-    } catch (err) {
+    video.play().catch(err => {
         console.error(err);
-        alert("Playback failed. Try on the same Wi-Fi or check Plex quality settings.");
-    }
-}
-
-function exitPlayer() {
-    const video = document.getElementById('videoPlayer');
-    video.pause(); video.src = '';
-    document.getElementById('player').classList.add('hidden');
-    document.getElementById('main').classList.remove('hidden');
+        alert("Playback blocked by Mixed Content.\n\nBest fix: Run the app locally (see below)");
+    });
 }
 
 // Start the app
