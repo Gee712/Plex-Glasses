@@ -1,5 +1,5 @@
 // ================== YOUR PLEX SETTINGS ==================
-const DEFAULT_SERVER_URL = "https://23.119.50.243:32400";
+const DEFAULT_SERVER_URL = "https://192.168.1.66:32400";
 const DEFAULT_PLEX_TOKEN = "W2SAvvUNygsyESTDtgY_";
 // =======================================================
 
