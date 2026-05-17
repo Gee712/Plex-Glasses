@@ -10,14 +10,30 @@ function saveConfig() {
 
 async function apiCall(endpoint) {
     let base = `${serverUrl}${endpoint}${endpoint.includes('?') ? '&' : '?'}X-Plex-Token=${token}`;
+    
+    // Try direct fetch first
     try {
-        const res = await fetch(base);
+        console.log('Trying direct:', base);
+        const res = await fetch(base, { credentials: 'omit' });
+        if (res.ok) {
+            console.log('Direct success');
+            return res.text();
+        }
+    } catch(e) {
+        console.log('Direct failed:', e.message);
+    }
+    
+    // CORS proxy fallback (less reliable for local IPs)
+    try {
+        const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(base);
+        console.log('Trying proxy:', proxyUrl);
+        const res = await fetch(proxyUrl);
         if (res.ok) return res.text();
-    } catch(e) {}
-    const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(base);
-    const res = await fetch(proxyUrl);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.text();
+    } catch(e) {
+        console.log('Proxy also failed');
+    }
+    
+    throw new Error('Could not connect. Try using http:// instead of https://');
 }
 
 function getThumbUrl(thumb) {
