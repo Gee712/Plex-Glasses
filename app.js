@@ -11,31 +11,26 @@ function saveConfig() {
 async function apiCall(endpoint) {
     let base = `${serverUrl}${endpoint}${endpoint.includes('?') ? '&' : '?'}X-Plex-Token=${token}`;
     
-    // Try direct fetch first
-    try {
-        console.log('Trying direct:', base);
-        const res = await fetch(base, { credentials: 'omit' });
-        if (res.ok) {
-            console.log('Direct success');
-            return res.text();
-        }
-    } catch(e) {
-        console.log('Direct failed:', e.message);
-    }
+    console.log('Fetching:', base);
     
-    // CORS proxy fallback (less reliable for local IPs)
+    // Try 1: Direct (usually fails due to CORS)
     try {
-        const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(base);
-        console.log('Trying proxy:', proxyUrl);
-        const res = await fetch(proxyUrl);
+        const res = await fetch(base);
         if (res.ok) return res.text();
-    } catch(e) {
-        console.log('Proxy also failed');
-    }
-    
-    throw new Error('Could not connect. Try using http:// instead of https://');
-}
+    } catch(e) {}
 
+    // Try 2: Better public proxy
+    try {
+        const proxyUrl = `https://api.allorigins.win/get?url=` + encodeURIComponent(base);
+        const res = await fetch(proxyUrl);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.contents) return data.contents;
+        }
+    } catch(e) { console.log('AllOrigins failed'); }
+
+    throw new Error('Connection failed. Try a different proxy or server URL.');
+}
 function getThumbUrl(thumb) {
     return thumb ? `${serverUrl}${thumb}?X-Plex-Token=${token}` : '';
 }
