@@ -8,17 +8,12 @@
 </head>
 <body>
     <div class="container" id="main">
-        <h1>Plex 👓</h1>
+        <h1>Matrix 👓</h1>
         
         <div class="config">
             <input type="text" id="serverUrl" placeholder="server address" value="">
             <input type="text" id="plexToken" placeholder="X-Plex-Token" value="">
             <button onclick="saveConfig()">Save</button>
-        </div>
-
-        <div class="search">
-            <input type="text" id="searchInput" placeholder="Search..." onkeyup="if(event.key==='Enter') search()">
-            <button onclick="search()">🔎</button>
         </div>
 
         <div id="continueWatching"></div>
