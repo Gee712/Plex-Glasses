@@ -1,5 +1,5 @@
 // ================== YOUR SETTINGS (EDIT THESE) ==================
-const DEFAULT_SERVER_URL = "http://23.119.50.243:32400";   // ← Change to your IP
+const DEFAULT_SERVER_URL = "https://23.119.50.243:32400";   // ← Change to your IP
 const DEFAULT_PLEX_TOKEN = "W2SAvvUNygsyESTDtgY_"; // ← Paste your full token here
 // ================================================================
 
