@@ -9,10 +9,22 @@ function saveConfig() {
 }
 
 async function apiCall(endpoint) {
-    const sep = endpoint.includes('?') ? '&' : '?';
-    const url = `${serverUrl}${endpoint}${sep}X-Plex-Token=${token}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    let base = `${serverUrl}${endpoint}${endpoint.includes('?') ? '&' : '?'}X-Plex-Token=${token}`;
+    
+    // Try direct first, then CORS proxy
+    try {
+        console.log('Trying direct:', base);
+        const res = await fetch(base);
+        if (res.ok) return res.text();
+    } catch(e) {
+        console.log('Direct failed, trying proxy...');
+    }
+    
+    // Fallback public CORS proxy (for testing only)
+    const proxy = `https://corsproxy.io/?` + encodeURIComponent(base);
+    console.log('Proxy URL:', proxy);
+    const res = await fetch(proxy);
+    if (!res.ok) throw new Error(`HTTP ${res.status} - Check console`);
     return res.text();
 }
 
@@ -22,51 +34,41 @@ function getThumbUrl(thumb) {
 }
 
 async function loadHome() {
-    await Promise.all([loadContinueWatching(), loadRecentlyAdded(), loadLibraries()]);
+    document.getElementById('libraries').innerHTML = '<h2>Loading libraries...</h2>';
+    await Promise.allSettled([loadContinueWatching(), loadRecentlyAdded(), loadLibraries()]);
 }
 
-async function loadContinueWatching() {
-    const div = document.getElementById('continueWatching');
-    div.innerHTML = '<h2>Continue Watching</h2>';
-    
-    const fallbacks = [
-        '/hubs/home/continueWatching',
-        '/hubs/home/onDeck',
-        '/library/onDeck',
-        '/hubs/sections/continueWatching'  // another possible path
-    ];
-
-    for (let endpoint of fallbacks) {
-        try {
-            const xml = await apiCall(endpoint);
-            const doc = new DOMParser().parseFromString(xml, 'text/xml');
-            const items = doc.querySelectorAll('Video, Directory');
-            if (items.length > 0) {
-                renderItems(xml, div, true);
-                return;
-            }
-        } catch(e) {}
-    }
-    div.innerHTML += '<p>No continue items yet.<br>Watch something and it will appear here.</p>';
-}
-
-async function loadRecentlyAdded() {
-    const div = document.getElementById('recentlyAdded'); // we'll add this to HTML
-    if (!div) return;
-    div.innerHTML = '<h2>Recently Added</h2>';
+async function loadLibraries() {
+    const div = document.getElementById('libraries');
+    div.innerHTML = '<h2>Libraries</h2>';
     try {
-        const xml = await apiCall('/library/recentlyAdded');
-        renderItems(xml, div);
+        const xml = await apiCall('/library/sections');
+        console.log('Libraries XML received');
+        const doc = new DOMParser().parseFromString(xml, 'text/xml');
+        const dirs = doc.querySelectorAll('Directory');
+        if (dirs.length === 0) {
+            div.innerHTML += '<p>No libraries found. Check Plex server.</p>';
+            return;
+        }
+        dirs.forEach(dir => {
+            const title = dir.getAttribute('title');
+            const key = dir.getAttribute('key');
+            const el = document.createElement('div');
+            el.className = 'focusable';
+            el.textContent = `📚 ${title}`;
+            el.onclick = () => browseSection(key);
+            div.appendChild(el);
+        });
     } catch(e) {
-        div.innerHTML += '<p>Could not load recently added</p>';
+        console.error(e);
+        div.innerHTML += `<p>Error: ${e.message}<br>Check console (F12)</p>`;
     }
 }
 
-async function loadLibraries() { /* keep your existing loadLibraries() */ }
+// Keep the rest of your functions (loadContinueWatching, loadRecentlyAdded, renderItems, search, etc.)
+// Just make sure loadHome() is called on load
 
-// renderItems, search, loadSeasons, loadEpisodes, playMedia, etc. stay the same as last version
-
-// At the bottom, change the load part to:
+// Saved config
 const saved = localStorage.getItem('plexConfig');
 if (saved) {
     const cfg = JSON.parse(saved);
@@ -74,5 +76,5 @@ if (saved) {
     document.getElementById('plexToken').value = cfg.token;
     serverUrl = cfg.serverUrl;
     token = cfg.token;
-    loadHome();   // ← changed to loadHome()
+    loadHome();
 }
