@@ -1,5 +1,5 @@
 // ================== YOUR PLEX SETTINGS ==================
-const DEFAULT_SERVER_URL = "http://192.168.1.66:8080";
+const DEFAULT_SERVER_URL = "http://192.168.1.66:32400";
 const DEFAULT_PLEX_TOKEN = "W2SAvvUNygsyESTDtgY_";
 // =======================================================
 
@@ -8,39 +8,57 @@ let token = DEFAULT_PLEX_TOKEN;
 
 async function apiCall(endpoint) {
     let base = `${serverUrl}${endpoint}${endpoint.includes('?') ? '&' : '?'}X-Plex-Token=${token}`;
+    console.log("API Call:", base);
+    
     try {
         const res = await fetch(base);
-        if (res.ok) return res.text();
-    } catch(e) {}
-    return '<p>Connection failed</p>';
-}
-
-function getThumbUrl(thumb) {
-    return thumb ? `${serverUrl}${thumb}?X-Plex-Token=${token}` : '';
+        console.log("Status:", res.status);
+        if (res.ok) {
+            const text = await res.text();
+            console.log("Response received");
+            return text;
+        } else {
+            return `<p>Server error ${res.status}</p>`;
+        }
+    } catch(e) {
+        console.error("Fetch error:", e);
+        return `<p>Connection error: ${e.message}</p>`;
+    }
 }
 
 async function loadHome() {
+    document.getElementById('recentlyAdded').innerHTML = '<h2>Recently Added</h2><p>Loading...</p>';
+    document.getElementById('libraries').innerHTML = '<h2>Libraries</h2><p>Loading...</p>';
+    
     await Promise.allSettled([loadRecentlyAdded(), loadLibraries()]);
 }
 
 async function loadRecentlyAdded() {
     const div = document.getElementById('recentlyAdded');
-    div.innerHTML = '<h2>Recently Added</h2>';
     try {
         const xml = await apiCall('/library/recentlyAdded');
-        renderItems(xml, div);
+        if (xml.includes('<Video') || xml.includes('<Directory')) {
+            renderItems(xml, div);
+        } else {
+            div.innerHTML += '<p>No recently added items</p>';
+        }
     } catch(e) {
-        div.innerHTML += '<p>Could not load recently added</p>';
+        div.innerHTML += '<p>Error loading recently added</p>';
     }
 }
 
 async function loadLibraries() {
     const div = document.getElementById('libraries');
-    div.innerHTML = '<h2>Libraries</h2>';
     try {
         const xml = await apiCall('/library/sections');
         const doc = new DOMParser().parseFromString(xml, 'text/xml');
         const dirs = doc.querySelectorAll('Directory');
+        
+        if (dirs.length === 0) {
+            div.innerHTML += '<p>No libraries found. Check Plex server.</p>';
+            return;
+        }
+        
         dirs.forEach(dir => {
             const el = document.createElement('div');
             el.className = 'focusable';
@@ -49,57 +67,11 @@ async function loadLibraries() {
             div.appendChild(el);
         });
     } catch(e) {
-        div.innerHTML += '<p>Error loading libraries</p>';
+        div.innerHTML += `<p>Error: ${e.message}</p>`;
     }
 }
 
-async function browseSection(key) {
-    const div = document.getElementById('browse');
-    div.innerHTML = '<h2>Loading content...</h2><button onclick="loadHome()">← Back to Home</button>';
-    try {
-        const xml = await apiCall(`/library/sections/${key}/all`);
-        renderItems(xml, div);
-    } catch(e) {
-        div.innerHTML += '<p>Failed to load</p>';
-    }
-}
+// Keep the rest of your functions (renderItems, browseSection, playMedia, etc.)
+// ... paste the rest from previous version here if needed
 
-function renderItems(xml, container) {
-    const doc = new DOMParser().parseFromString(xml, 'text/xml');
-    const items = doc.querySelectorAll('Video, Directory, Show, Season, Episode');
-    const grid = document.createElement('div');
-    grid.className = 'grid';
-
-    items.forEach(item => {
-        const title = item.getAttribute('title') || 'Untitled';
-        const thumb = item.getAttribute('thumb') || '';
-        const key = item.getAttribute('key');
-        const div = document.createElement('div');
-        div.className = 'item focusable';
-        div.innerHTML = `<img src="${getThumbUrl(thumb)}" onerror="this.style.display='none'"><div class="title">${title}</div>`;
-        div.onclick = () => playMedia(key);
-        grid.appendChild(div);
-    });
-    container.appendChild(grid);
-}
-
-async function playMedia(key) {
-    const video = document.getElementById('videoPlayer');
-    
-    // Fixed + better Plex direct play URL
-    let streamUrl = `${serverUrl}/library/metadata/${key}/file?X-Plex-Token=${token}`;
-    
-    console.log("Attempting to play:", streamUrl);
-    
-    video.src = streamUrl;
-    document.getElementById('main').classList.add('hidden');
-    document.getElementById('player').classList.remove('hidden');
-    
-    video.play().catch(err => {
-        console.error(err);
-        alert("Playback blocked by Mixed Content.\n\nBest fix: Run the app locally (see below)");
-    });
-}
-
-// Start the app
 window.onload = loadHome;
