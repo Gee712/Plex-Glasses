@@ -10,12 +10,10 @@ function saveConfig() {
 
 async function apiCall(endpoint) {
     let base = `${serverUrl}${endpoint}${endpoint.includes('?') ? '&' : '?'}X-Plex-Token=${token}`;
-    
     try {
         const res = await fetch(base);
         if (res.ok) return res.text();
-    } catch(e) { console.log('Direct failed, using proxy'); }
-    
+    } catch(e) {}
     const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(base);
     const res = await fetch(proxyUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -33,7 +31,7 @@ async function loadHome() {
 async function loadContinueWatching() {
     const div = document.getElementById('continueWatching');
     div.innerHTML = '<h2>Continue Watching</h2>';
-    const fallbacks = ['/hubs/home/continueWatching', '/library/onDeck', '/hubs/home/onDeck'];
+    const fallbacks = ['/hubs/home/continueWatching', '/library/onDeck'];
     for (let ep of fallbacks) {
         try {
             const xml = await apiCall(ep);
@@ -65,49 +63,39 @@ async function loadLibraries() {
         const doc = new DOMParser().parseFromString(xml, 'text/xml');
         const dirs = doc.querySelectorAll('Directory');
         dirs.forEach(dir => {
-            const title = dir.getAttribute('title');
-            const key = dir.getAttribute('key');
             const el = document.createElement('div');
             el.className = 'focusable';
-            el.textContent = `📚 ${title}`;
-            el.onclick = () => browseSection(key);
+            el.textContent = `📚 ${dir.getAttribute('title')}`;
+            el.onclick = () => browseSection(dir.getAttribute('key'));
             div.appendChild(el);
         });
     } catch(e) {
-        console.error(e);
         div.innerHTML += `<p>Error: ${e.message}</p>`;
     }
 }
 
-async function browseSection(sectionKey) {
-    const browseDiv = document.getElementById('browse');
-    browseDiv.innerHTML = '<h2>Browsing...</h2><button onclick="loadHome()">← Back</button>';
+async function browseSection(key) {
+    const div = document.getElementById('browse');
+    div.innerHTML = '<h2>Browsing...</h2><button onclick="loadHome()">← Back</button>';
     try {
-        const xml = await apiCall(`/library/sections/${sectionKey}/all`);
-        renderItems(xml, browseDiv);
+        const xml = await apiCall(`/library/sections/${key}/all`);
+        renderItems(xml, div);
     } catch(e) {}
 }
 
-function renderItems(xml, container, isContinue = false) {
+function renderItems(xml, container) {
     const doc = new DOMParser().parseFromString(xml, 'text/xml');
     const items = doc.querySelectorAll('Video, Directory, Show, Season, Episode');
     const grid = document.createElement('div');
     grid.className = 'grid';
     items.forEach(item => {
-        const title = item.getAttribute('title') || item.getAttribute('grandparentTitle') || 'Untitled';
-        const thumb = item.getAttribute('thumb') || item.getAttribute('grandparentThumb') || '';
+        const title = item.getAttribute('title') || 'Untitled';
+        const thumb = item.getAttribute('thumb') || '';
         const key = item.getAttribute('key');
-        const viewOffset = parseInt(item.getAttribute('viewOffset') || '0');
-        const type = item.tagName.toLowerCase();
-
         const div = document.createElement('div');
         div.className = 'item focusable';
-        div.innerHTML = `<img src="${getThumbUrl(thumb)}" onerror="this.style.display='none'"><div class="title">${title}${viewOffset > 0 ? ' (Resume)' : ''}</div>`;
-        div.onclick = () => {
-            if (type === 'show') loadSeasons(key);
-            else if (type === 'season') loadEpisodes(key);
-            else playMedia(key, viewOffset);
-        };
+        div.innerHTML = `<img src="${getThumbUrl(thumb)}" onerror="this.style.display='none'"><div class="title">${title}</div>`;
+        div.onclick = () => playMedia(key);
         grid.appendChild(div);
     });
     container.appendChild(grid);
@@ -116,53 +104,27 @@ function renderItems(xml, container, isContinue = false) {
 async function search() {
     const query = document.getElementById('searchInput').value.trim();
     if (!query) return;
-    const browseDiv = document.getElementById('browse');
-    browseDiv.innerHTML = `<h2>Results for "${query}"</h2><button onclick="loadHome()">← Back</button>`;
+    const div = document.getElementById('browse');
+    div.innerHTML = `<h2>Results for "${query}"</h2><button onclick="loadHome()">← Back</button>`;
     try {
         const xml = await apiCall(`/search?query=${encodeURIComponent(query)}`);
-        renderItems(xml, browseDiv);
+        renderItems(xml, div);
     } catch(e) {}
 }
 
-async function loadSeasons(showKey) {
-    const browseDiv = document.getElementById('browse');
-    browseDiv.innerHTML = '<h2>Seasons</h2><button onclick="loadHome()">← Back</button>';
-    try { 
-        const xml = await apiCall(`/library/metadata/${showKey}/children`); 
-        renderItems(xml, browseDiv); 
-    } catch(e) {}
-}
-
-async function loadEpisodes(seasonKey) {
-    const browseDiv = document.getElementById('browse');
-    browseDiv.innerHTML = '<h2>Episodes</h2><button onclick="loadHome()">← Back</button>';
-    try { 
-        const xml = await apiCall(`/library/metadata/${seasonKey}/children`); 
-        renderItems(xml, browseDiv); 
-    } catch(e) {}
-}
-
-async function playMedia(key, offset = 0) {
+async function playMedia(key) {
     const video = document.getElementById('videoPlayer');
-    let url = `${serverUrl}/library/metadata/${key}/?X-Plex-Token=${token}`;
-    if (offset > 0) url += `&offset=${offset}`;
-    video.src = url;
+    video.src = `${serverUrl}/library/metadata/${key}/?X-Plex-Token=${token}`;
     document.getElementById('main').classList.add('hidden');
     document.getElementById('player').classList.remove('hidden');
     video.play();
-    window.currentMediaKey = key;
 }
 
 function exitPlayer() {
     const video = document.getElementById('videoPlayer');
-    video.pause(); 
-    video.src = '';
+    video.pause(); video.src = '';
     document.getElementById('player').classList.add('hidden');
     document.getElementById('main').classList.remove('hidden');
-}
-
-async function toggleSubtitles() { 
-    alert('Subtitles coming soon'); 
 }
 
 // Load saved config
