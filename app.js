@@ -11,20 +11,16 @@ function saveConfig() {
 async function apiCall(endpoint) {
     let base = `${serverUrl}${endpoint}${endpoint.includes('?') ? '&' : '?'}X-Plex-Token=${token}`;
     
-    // Try direct first, then CORS proxy
+    // Try direct fetch first
     try {
-        console.log('Trying direct:', base);
         const res = await fetch(base);
         if (res.ok) return res.text();
-    } catch(e) {
-        console.log('Direct failed, trying proxy...');
-    }
+    } catch(e) { console.log('Direct fetch failed, using proxy...'); }
     
-    // Fallback public CORS proxy (for testing only)
-    const proxy = `https://corsproxy.io/?` + encodeURIComponent(base);
-    console.log('Proxy URL:', proxy);
-    const res = await fetch(proxy);
-    if (!res.ok) throw new Error(`HTTP ${res.status} - Check console`);
+    // CORS proxy fallback (for GitHub Pages)
+    const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(base);
+    const res = await fetch(proxyUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.text();
 }
 
@@ -34,8 +30,39 @@ function getThumbUrl(thumb) {
 }
 
 async function loadHome() {
-    document.getElementById('libraries').innerHTML = '<h2>Loading libraries...</h2>';
-    await Promise.allSettled([loadContinueWatching(), loadRecentlyAdded(), loadLibraries()]);
+    await Promise.allSettled([
+        loadContinueWatching(),
+        loadRecentlyAdded(),
+        loadLibraries()
+    ]);
+}
+
+async function loadContinueWatching() {
+    const div = document.getElementById('continueWatching');
+    div.innerHTML = '<h2>Continue Watching</h2>';
+    const fallbacks = ['/hubs/home/continueWatching', '/hubs/home/onDeck', '/library/onDeck'];
+    for (let ep of fallbacks) {
+        try {
+            const xml = await apiCall(ep);
+            const doc = new DOMParser().parseFromString(xml, 'text/xml');
+            if (doc.querySelectorAll('Video, Directory').length > 0) {
+                renderItems(xml, div, true);
+                return;
+            }
+        } catch(e) {}
+    }
+    div.innerHTML += '<p>No continue items yet.<br>Watch something for a few minutes and refresh.</p>';
+}
+
+async function loadRecentlyAdded() {
+    const div = document.getElementById('recentlyAdded');
+    div.innerHTML = '<h2>Recently Added</h2>';
+    try {
+        const xml = await apiCall('/library/recentlyAdded');
+        renderItems(xml, div);
+    } catch(e) {
+        div.innerHTML += '<p>Could not load recently added</p>';
+    }
 }
 
 async function loadLibraries() {
@@ -43,11 +70,10 @@ async function loadLibraries() {
     div.innerHTML = '<h2>Libraries</h2>';
     try {
         const xml = await apiCall('/library/sections');
-        console.log('Libraries XML received');
         const doc = new DOMParser().parseFromString(xml, 'text/xml');
         const dirs = doc.querySelectorAll('Directory');
         if (dirs.length === 0) {
-            div.innerHTML += '<p>No libraries found. Check Plex server.</p>';
+            div.innerHTML += '<p>No libraries found.</p>';
             return;
         }
         dirs.forEach(dir => {
@@ -61,20 +87,73 @@ async function loadLibraries() {
         });
     } catch(e) {
         console.error(e);
-        div.innerHTML += `<p>Error: ${e.message}<br>Check console (F12)</p>`;
+        div.innerHTML += `<p>Error loading libraries.<br>Check console (F12) → ${e.message}</p>`;
     }
 }
 
-// Keep the rest of your functions (loadContinueWatching, loadRecentlyAdded, renderItems, search, etc.)
-// Just make sure loadHome() is called on load
-
-// Saved config
-const saved = localStorage.getItem('plexConfig');
-if (saved) {
-    const cfg = JSON.parse(saved);
-    document.getElementById('serverUrl').value = cfg.serverUrl;
-    document.getElementById('plexToken').value = cfg.token;
-    serverUrl = cfg.serverUrl;
-    token = cfg.token;
-    loadHome();
+async function browseSection(sectionKey) {
+    const browseDiv = document.getElementById('browse');
+    browseDiv.innerHTML = '<h2>Browsing...</h2><button onclick="loadHome()">← Back to Home</button>';
+    try {
+        const xml = await apiCall(`/library/sections/${sectionKey}/all`);
+        renderItems(xml, browseDiv);
+    } catch(e) {}
 }
+
+function renderItems(xml, container, isContinue = false) {
+    const doc = new DOMParser().parseFromString(xml, 'text/xml');
+    const items = doc.querySelectorAll('Video, Directory, Show, Season, Episode');
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+
+    items.forEach(item => {
+        const title = item.getAttribute('title') || item.getAttribute('grandparentTitle') || 'Untitled';
+        const thumb = item.getAttribute('thumb') || item.getAttribute('grandparentThumb') || '';
+        const key = item.getAttribute('key');
+        const viewOffset = parseInt(item.getAttribute('viewOffset') || '0');
+        const type = item.tagName.toLowerCase();
+
+        const div = document.createElement('div');
+        div.className = 'item focusable';
+        div.innerHTML = `
+            <img src="${getThumbUrl(thumb)}" alt="${title}" onerror="this.style.display='none'">
+            <div class="title">${title} ${viewOffset > 0 ? '(Resume)' : ''}</div>
+        `;
+        div.onclick = () => {
+            if (type === 'show' || type === 'directory' && item.getAttribute('type') === 'show') {
+                loadSeasons(key);
+            } else if (type === 'season') {
+                loadEpisodes(key);
+            } else {
+                playMedia(key, viewOffset);
+            }
+        };
+        grid.appendChild(div);
+    });
+    container.appendChild(grid);
+}
+
+async function search() {
+    const query = document.getElementById('searchInput').value.trim();
+    if (!query) return;
+    const browseDiv = document.getElementById('browse');
+    browseDiv.innerHTML = `<h2>Results for "${query}"</h2><button onclick="loadHome()">← Back</button>`;
+    try {
+        const xml = await apiCall(`/search?query=${encodeURIComponent(query)}`);
+        renderItems(xml, browseDiv);
+    } catch(e) {
+        browseDiv.innerHTML += '<p>No results or error.</p>';
+    }
+}
+
+async function loadSeasons(showKey) {
+    const browseDiv = document.getElementById('browse');
+    browseDiv.innerHTML = '<h2>Seasons</h2><button onclick="loadHome()">← Back</button>';
+    try {
+        const xml = await apiCall(`/library/metadata/${showKey}/children`);
+        renderItems(xml, browseDiv);
+    } catch(e) {}
+}
+
+async function loadEpisodes(seasonKey) {
+    const browseDiv =
