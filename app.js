@@ -1,6 +1,6 @@
 // ================== YOUR PLEX SETTINGS ==================
-const DEFAULT_SERVER_URL = "http://192.168.1.66:32400";
-const DEFAULT_PLEX_TOKEN = "W2SAvvUNyW2SAvvUNygsyESTDtgY_gsyESTDtgY_";
+const DEFAULT_SERVER_URL = "https:// 23.119.50.243:32400";
+const DEFAULT_PLEX_TOKEN = "W2SAvvUNygsyESTDtgY_";
 // =======================================================
 
 let serverUrl = DEFAULT_SERVER_URL;
